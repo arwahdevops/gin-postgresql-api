@@ -2,9 +2,12 @@ package controller
 
 import (
 	"net/http"
+	"strings"
+	"time"
 
 	"github.com/ArwahDevops/gin-postgresql-api/config"
 	"github.com/ArwahDevops/gin-postgresql-api/models"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -17,6 +20,40 @@ func hashPassword(password string) (string, error) {
 func checkPassword(hashedPassword, password string) bool {
 	err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
 	return err == nil
+}
+
+func GenerateJWT(id uint64, email string) (string, error) {
+	claims := jwt.MapClaims{
+		"id":    id,
+		"email": email,
+		"exp":   time.Now().Add(time.Hour * 72).Unix(),
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	secret := []byte("my-secret-key")
+	tokenString, err := token.SignedString(secret)
+	if err != nil {
+		return "", err
+	}
+	return tokenString, nil
+}
+
+func AuthMiddleware(c *gin.Context) {
+	headerToken := c.Request.Header.Get("Authorization")
+	if headerToken == "" {
+		c.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+	token := strings.TrimPrefix(headerToken, "Bearer ")
+	secret := []byte("my-secret-key")
+	claims := jwt.MapClaims{}
+	_, err := jwt.ParseWithClaims(token, claims, func(token *jwt.Token) (interface{}, error) {
+		return secret, nil
+	})
+	if err != nil {
+		c.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+	c.Next()
 }
 
 func RegisterUser(c *gin.Context) {
@@ -42,6 +79,7 @@ func UserLogin(c *gin.Context) {
 		Password string `json:"password" binding:"required"`
 	}
 	if err := c.BindJSON(&request); err != nil {
+		// Kirim response error jika email atau password kosong
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "Email atau password tidak boleh kosong",
 		})
@@ -50,6 +88,7 @@ func UserLogin(c *gin.Context) {
 	// Cari pengguna dengan email yang sesuai
 	var user models.User
 	if err := config.DB.Where("email = ?", request.Email).First(&user).Error; err != nil {
+		// Kirim response error jika email atau password salah
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"error": "Email atau password salah",
 		})
@@ -57,14 +96,27 @@ func UserLogin(c *gin.Context) {
 	}
 	// Verifikasi password pengguna
 	if !checkPassword(user.Password, request.Password) {
+		// Kirim response error jika email atau password salah
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"error": "Email atau password salah",
 		})
 		return
 	}
-	// Jika email dan password cocok, kirim response sukses ke client
+	// Generate JWT untuk pengguna
+	token, err := GenerateJWT(uint64(user.ID), user.Email)
+	if err != nil {
+		// Kirim response error jika gagal membuat JWT
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Gagal membuat JWT",
+		})
+		return
+	}
+	// Kirim JWT ke client melalui header Authorization
+	c.Header("Authorization", "Bearer "+token)
+	// Kirim response sukses ke client
 	c.JSON(200, gin.H{
 		"message": "Login sukses",
+		"jwt":     token,
 	})
 }
 
