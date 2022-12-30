@@ -4,7 +4,7 @@ Coding for fun 🌱
 `go run main.go`
 ## Endpoint
 ### - Register
-POST `http://localhost:8080/register` \
+POST `http://localhost:8080/register`
 ```
 {
     "name": "Riki Permana", 
@@ -13,7 +13,7 @@ POST `http://localhost:8080/register` \
 }
 ```
 ### - Login
-POST `http://localhost:8080/login` \
+POST `http://localhost:8080/login`
 ```
 {
     "email": "arwahdevops@gmail.com", 
@@ -21,7 +21,7 @@ POST `http://localhost:8080/login` \
 }
 ```
 ### - Update
-PUT `http://localhost:8080/user/:id` \
+PUT `http://localhost:8080/user/:id`
 ```
 {
     "name": "Riki Permana", 
