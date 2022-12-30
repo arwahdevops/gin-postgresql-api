@@ -59,6 +59,18 @@ func AuthMiddleware(c *gin.Context) {
 func RegisterUser(c *gin.Context) {
 	var user models.User
 	c.BindJSON(&user)
+
+	// Cek apakah email sudah terdaftar
+	var existingUser models.User
+	config.DB.Where("email = ?", user.Email).First(&existingUser)
+	if existingUser.ID != 0 {
+		// Email sudah terdaftar, kirim pesan error ke pengguna
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Email sudah terdaftar",
+		})
+		return
+	}
+
 	// Mengenkripsi password pengguna sebelum disimpan ke dalam database
 	hashedPassword, err := hashPassword(user.Password)
 	if err != nil {
@@ -68,6 +80,7 @@ func RegisterUser(c *gin.Context) {
 		return
 	}
 	user.Password = hashedPassword
+
 	config.DB.Create(&user)
 	c.JSON(200, &user)
 }
