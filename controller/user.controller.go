@@ -118,6 +118,17 @@ func UpdateUser(c *gin.Context) {
 		return
 	}
 	c.BindJSON(&user)
+
+	// Mengenkripsi password pengguna sebelum disimpan ke dalam database
+	hashedPassword, err := hashPassword(user.Password)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Gagal mengenkripsi password pengguna",
+		})
+		return
+	}
+	user.Password = hashedPassword
+
 	config.DB.Save(&user)
 	c.JSON(200, &user)
 }
