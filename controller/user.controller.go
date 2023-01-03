@@ -2,12 +2,10 @@ package controller
 
 import (
 	"net/http"
-	"strings"
-	"time"
 
 	"github.com/ArwahDevops/gin-postgresql-api/config"
+	"github.com/ArwahDevops/gin-postgresql-api/middleware"
 	"github.com/ArwahDevops/gin-postgresql-api/models"
-	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -20,40 +18,6 @@ func hashPassword(password string) (string, error) {
 func checkPassword(hashedPassword, password string) bool {
 	err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
 	return err == nil
-}
-
-func GenerateJWT(id uint64, email string) (string, error) {
-	claims := jwt.MapClaims{
-		"id":    id,
-		"email": email,
-		"exp":   time.Now().Add(time.Hour * 72).Unix(),
-	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	secret := []byte("my-secret-key")
-	tokenString, err := token.SignedString(secret)
-	if err != nil {
-		return "", err
-	}
-	return tokenString, nil
-}
-
-func AuthMiddleware(c *gin.Context) {
-	headerToken := c.Request.Header.Get("Authorization")
-	if headerToken == "" {
-		c.AbortWithStatus(http.StatusUnauthorized)
-		return
-	}
-	token := strings.TrimPrefix(headerToken, "Bearer ")
-	secret := []byte("my-secret-key")
-	claims := jwt.MapClaims{}
-	_, err := jwt.ParseWithClaims(token, claims, func(token *jwt.Token) (interface{}, error) {
-		return secret, nil
-	})
-	if err != nil {
-		c.AbortWithStatus(http.StatusUnauthorized)
-		return
-	}
-	c.Next()
 }
 
 func RegisterUser(c *gin.Context) {
@@ -116,7 +80,7 @@ func UserLogin(c *gin.Context) {
 		return
 	}
 	// Generate JWT untuk pengguna
-	token, err := GenerateJWT(uint64(user.ID), user.Email)
+	token, err := middleware.GenerateJWT(uint64(user.ID), user.Email)
 	if err != nil {
 		// Kirim response error jika gagal membuat JWT
 		c.JSON(http.StatusInternalServerError, gin.H{
