@@ -18,5 +18,8 @@ func ConnectDB() {
 		panic(err)
 	}
 	db.AutoMigrate(&models.User{})
+	db.AutoMigrate(&models.Product{})
+	db.AutoMigrate(&models.Category{})
+	db.AutoMigrate(&models.ProductImage{})
 	DB = db
 }
