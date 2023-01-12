@@ -17,6 +17,8 @@ func main() {
 
 	routes.PingRoutes(router)
 	routes.UserRoutes(router)
+	routes.ProductRoutes(router)
+	routes.CategoryRoutes(router)
 
 	appPort := os.Getenv("APP_PORT")
 	router.Run(":" + appPort)
